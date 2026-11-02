@@ -88,3 +88,33 @@ docker compose down               # 停止
 ```
 
 `.env` 与 `cfg/` 永不入库。
+
+## 反向代理模式（本机实际用法）
+
+服务器已有 Caddy 占用 80/443 时，Jitsi 只监听本机回环，由 Caddy 终结 TLS。
+
+`.env` 关键改动：
+
+```
+PUBLIC_URL=https://water.radarsignal.xyz
+HTTP_PORT=127.0.0.1:18000
+HTTPS_PORT=127.0.0.1:18443
+DISABLE_HTTPS=1
+JVB_COLIBRI_PORT=18081
+JVB_ADVERTISE_IPS=186.241.72.63
+#ENABLE_LETSENCRYPT=1        # 由 Caddy 签证书
+```
+
+Caddy 站点块：
+
+```caddyfile
+water.radarsignal.xyz {
+	reverse_proxy 127.0.0.1:18000 {
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Forwarded-Host {host}
+	}
+}
+```
+
+注意：Caddy 服务用户是 `caddy`，日志文件必须 `chown caddy:caddy`，否则 reload 报 permission denied。
